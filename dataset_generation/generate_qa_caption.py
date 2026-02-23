@@ -219,7 +219,7 @@ def generate_all_qa(output_csv, num_qa):
     """Generate Q/A pairs with specified number per chunk"""
     
     print("=" * 70)
-    print("PHASE 5.1: Q/A GENERATION FROM CAPTIONS")
+    print("Q/A GENERATION FROM CAPTIONS")
     print(f"Generating {num_qa} Q/A pairs per chunk")
     print(f"Batch size: {BATCH_SIZE}")
     print("=" * 70)
@@ -286,7 +286,7 @@ def generate_all_qa(output_csv, num_qa):
     results_df.to_csv(output_csv, index=False)
     
     print("\n" + "=" * 70)
-    print("PHASE 5.1 COMPLETE")
+    print("Q/A GENERATION COMPLETE")
     print("=" * 70)
     
     print(f"\nTotal chunks with captions: {len(df_with_captions)}")
@@ -316,13 +316,25 @@ def generate_all_qa(output_csv, num_qa):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Phase 5.1: Generate Q/A pairs from refined captions"
+        description="Generate Q/A pairs from refined captions"
+    )
+    parser.add_argument(
+        "--input",
+        type=str,
+        default=DEFAULT_INPUT_CSV,
+        help="Input CSV with classified captions"
     )
     parser.add_argument(
         "--model",
         type=str,
-        default=MODEL_NAME,
+        default=DEFAULT_MODEL_NAME,
         help="Hugging Face model name"
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default=DEFAULT_CACHE_DIR,
+        help="Hugging Face cache directory"
     )
     parser.add_argument(
         "--num-qa",
@@ -333,25 +345,35 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-tokens",
         type=int,
-        default=MAX_NEW_TOKENS,
+        default=DEFAULT_MAX_NEW_TOKENS,
         help="Maximum tokens for generation"
     )
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=BATCH_SIZE,
-        help="Number of chunks to process in one batch (default: 4)"
+        default=DEFAULT_BATCH_SIZE,
+        help="Number of chunks to process in one batch"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=f"./data/caption_qa_pairs_{{num_qa}}qa.csv",
+        help="Output CSV path"
     )
     
     args = parser.parse_args()
     
-    # Update globals
+    # Assign globals from args
+    INPUT_CSV = args.input
     MODEL_NAME = args.model
+    CACHE_DIR = args.cache_dir
     MAX_NEW_TOKENS = args.max_tokens
     BATCH_SIZE = args.batch_size
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
-    OUTPUT_CSV = f"/hpc/home/jkim1/workspace/TCCC/data/phase5.1_qa_pairs_{args.num_qa}qa_llama.csv"
+    # Format output path with num_qa
+    output_csv = args.output.format(num_qa=args.num_qa) if '{num_qa}' in args.output else args.output
     
-    print(f"\nOutput will be saved to: {OUTPUT_CSV}\n")
+    print(f"\nOutput will be saved to: {output_csv}\n")
     
-    generate_all_qa(OUTPUT_CSV, args.num_qa)
+    generate_all_qa(output_csv, args.num_qa)

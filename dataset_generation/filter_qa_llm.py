@@ -52,11 +52,17 @@ def setup_cache(cache_dir, torch_cache_dir):
 
     # CUDA settings
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
+def cleanup_on_exit():
+    """Cleanup vLLM workers and cache on exit"""
+    import subprocess
+    try:
         subprocess.run(['pkill', '-9', '-f', 'VLLM::Worker'],
                       capture_output=True, check=False)
         time.sleep(2)
         
-        if os.path.exists(TORCH_CACHE_DIR):
+        # Use global variables that will be assigned later
+        if 'TORCH_CACHE_DIR' in globals() and os.path.exists(TORCH_CACHE_DIR):
             shutil.rmtree(TORCH_CACHE_DIR, ignore_errors=True)
             print(f"Removed cache: {TORCH_CACHE_DIR}")
     except Exception as e:
@@ -81,8 +87,6 @@ import argparse
 # ============================================================
 # CONFIG
 # ============================================================
-DATA_DIR = Path("/hpc/home/jkim1/workspace/TCCC/data")
-
 # Judge model - Llama 405B for highest accuracy
 JUDGE_MODEL = "meta-llama/Meta-Llama-3.1-405B-Instruct"
 TENSOR_PARALLEL = 8
@@ -349,28 +353,44 @@ def filter_qa_pairs(df: pd.DataFrame, source_type: str) -> tuple:
 # ============================================================
 def main():
     parser = argparse.ArgumentParser(
-        description="Phase 5.3: Filter QA pairs using Llama 405B judge"
+        description="Filter QA pairs using Llama 405B judge"
     )
     parser.add_argument(
         "--input-file", type=str, required=True,
-        help="Direct input CSV path (e.g. phase5.1_qa_pairs_5qa_32B.csv)"
+        help="Direct input CSV path (e.g. qa_pairs_5qa.csv)"
     )
     parser.add_argument(
         "--output-file", type=str, default=None,
         help="Output CSV path (optional, auto-generated if not specified)"
     )
+    parser.add_argument(
+        "--cache-dir", type=str, default=DEFAULT_CACHE_DIR,
+        help="HuggingFace cache directory"
+    )
+    parser.add_argument(
+        "--torch-cache-dir", type=str, default=DEFAULT_TORCH_CACHE_DIR,
+        help="Torch cache directory"
+    )
     
     args = parser.parse_args()
     
-    input_path = Path(args.input_file)
-    stem = input_path.stem  # e.g. "phase5.1_qa_pairs_5qa_32B"
+    # Assign global cache directories
+    global CACHE_DIR, TORCH_CACHE_DIR
+    CACHE_DIR = args.cache_dir
+    TORCH_CACHE_DIR = args.torch_cache_dir
     
-    output_path  = Path(args.output_file) if args.output_file else DATA_DIR / f"phase5.3_filtered_{stem}.csv"
-    removed_path = DATA_DIR / f"phase5.3_removed_{stem}.csv"
-    metadata_path = DATA_DIR / f"phase5.3_metadata_{stem}.json"
+    # Setup cache
+    setup_cache(CACHE_DIR, TORCH_CACHE_DIR)
+    
+    input_path = Path(args.input_file)
+    stem = input_path.stem
+    
+    output_path  = Path(args.output_file) if args.output_file else input_path.parent / f"filtered_{stem}.csv"
+    removed_path = input_path.parent / f"removed_{stem}.csv"
+    metadata_path = input_path.parent / f"metadata_{stem}.json"
     
     print("=" * 70)
-    print("PHASE 5.3: LLM-BASED QA QUALITY FILTERING")
+    print("LLM-BASED QA QUALITY FILTERING")
     print(f"Input:  {input_path}")
     print(f"Output: {output_path}")
     print("=" * 70)

@@ -136,7 +136,7 @@ def process_split(split_name, input_csv, chunk_dict, output_dir):
 # ============================================================
 def convert_to_finetune_format(input_dir, output_dir):
     print("=" * 70)
-    print("PHASE 6.2: CONVERT TO FINE-TUNING FORMAT")
+    print("CONVERT TO FINE-TUNING FORMAT")
     print("Converts Q/A pairs to Qwen2-VL JSONL format")
     print("=" * 70)
 
@@ -167,7 +167,7 @@ def convert_to_finetune_format(input_dir, output_dir):
         stats[split_name] = process_split(split_name, input_csv, chunk_dict, output_dir)
 
     print("\n" + "=" * 70)
-    print("PHASE 6.2 COMPLETE")
+    print("CONVERSION COMPLETE")
     print("=" * 70)
 
     print("\nConversion Summary:")
@@ -181,7 +181,7 @@ def convert_to_finetune_format(input_dir, output_dir):
         if jsonl_file.exists():
             print(f"    - {jsonl_file.name}")
 
-    print("\n🔬 For Ablation Study:")
+    print("\n For Ablation Study:")
     print("  To filter training data by source:")
     print("  - Load train.jsonl")
     print("  - Filter by metadata['source']:")

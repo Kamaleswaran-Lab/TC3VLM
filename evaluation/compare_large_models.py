@@ -188,7 +188,7 @@ def run_inference(model, processor, dataloader, model_label) -> Dict[int, str]:
 # MAIN
 # ============================================================
 def main():
-    parser = argparse.ArgumentParser(description="Phase 8.4: Large model comparison")
+    parser = argparse.ArgumentParser(description="Large model comparison")
     parser.add_argument("--large-model",    type=str, required=True,
                         help="Large model to compare (e.g. Qwen/Qwen2.5-VL-72B-Instruct)")
     parser.add_argument("--large-model-label", type=str, default=None,
@@ -199,11 +199,24 @@ def main():
                         help="Labels for each finetuned CSV (e.g. qwen3_r32 qwen2_r32)")
     parser.add_argument("--test-file",      type=str, required=True)
     parser.add_argument("--output-dir",     type=str, required=True)
-    parser.add_argument("--batch-size",     type=int, default=BATCH_SIZE)
+    parser.add_argument("--video-dir",      type=str, default=DEFAULT_VIDEO_DIR)
+    parser.add_argument("--cache-dir",      type=str, default=DEFAULT_CACHE_DIR)
+    parser.add_argument("--batch-size",     type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--max-frames",     type=int, default=DEFAULT_MAX_FRAMES)
     parser.add_argument("--n-samples",      type=int, default=None)
     parser.add_argument("--tensor-parallel",type=int, default=1,
                         help="Number of GPUs for tensor parallelism (use vLLM for 72B)")
     args = parser.parse_args()
+    
+    # Assign globals from args
+    global CACHE_DIR, VIDEO_DIR, BATCH_SIZE, MAX_FRAMES
+    CACHE_DIR = args.cache_dir
+    VIDEO_DIR = Path(args.video_dir)
+    BATCH_SIZE = args.batch_size
+    MAX_FRAMES = args.max_frames
+    
+    # Setup cache
+    setup_cache(CACHE_DIR)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -212,7 +225,7 @@ def main():
     model_label = args.large_model_label or args.large_model.split("/")[-1].replace("-Instruct", "")
 
     print("=" * 65)
-    print("PHASE 8.4: LARGE MODEL COMPARISON")
+    print("LARGE MODEL COMPARISON")
     print("=" * 65)
     print(f"Large model  : {args.large_model} ({model_label})")
     print(f"Finetuned    : {args.finetuned_labels}")
@@ -283,12 +296,12 @@ def main():
         print(f"  Avg response length → Finetuned: {ft_len:.0f}, {model_label}: {lg_len:.0f}")
 
     print("\n" + "=" * 65)
-    print("PHASE 8.4 COMPLETE")
+    print("COMPARISON COMPLETE")
     print("=" * 65)
     print(f"\nNext step - LLM Judge:")
     for ft_label in args.finetuned_labels:
         csv_name = f"comparison_{ft_label}_vs_{model_label}.csv"
-        print(f"\n  python phase8.3_llm_judge.py \\")
+        print(f"\n  python evaluation/llm_judge.py \\")
         print(f"      --input-csv {output_dir}/{csv_name} \\")
         print(f"      --output-dir {output_dir}/{ft_label}_vs_{model_label}_judge \\")
         print(f"      --judges llama405b qwen72b")

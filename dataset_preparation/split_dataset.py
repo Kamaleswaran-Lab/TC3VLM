@@ -273,7 +273,7 @@ def save_statistics(df, train_df, val_df, test_df,
 # ============================================================
 def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, test_ratio):
     print("=" * 70)
-    print("PHASE 6.1: TRAIN/VAL/TEST SPLIT")
+    print("TRAIN/VAL/TEST SPLIT")
     print("Video-level split for ablation study")
     print("=" * 70)
     print(f"\nCaption CSV: {caption_csv}")
@@ -281,7 +281,7 @@ def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, t
     print(f"Output dir:  {output_dir}")
     print(f"Split ratios: Train={train_ratio}, Val={val_ratio}, Test={test_ratio}")
     print(f"Random seed: {RANDOM_SEED}")
-    print("\n🔬 Ablation Study Design:")
+    print("\n  Ablation Study Design:")
     print("  - All splits contain caption + visual Q/A")
     print("  - Filter by 'source' column during training:")
     print("    • Condition 1: Caption only")
@@ -304,9 +304,9 @@ def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, t
                     caption_csv, visual_csv, output_dir)
 
     print("\n" + "=" * 70)
-    print("PHASE 6.1 COMPLETE")
+    print("SPLIT COMPLETE")
     print("=" * 70)
-    print("\n🔬 Next Steps for Ablation Study:")
+    print("\n  Next Steps for Ablation Study:")
     print("  In your fine-tuning script, load train set and filter:")
     print("  - train_df[train_df['source'] != 'visual_grounded']  # Caption only")
     print("  - train_df[train_df['source'] == 'visual_grounded']  # Visual only")
@@ -321,13 +321,13 @@ if __name__ == "__main__":
         "--caption-csv",
         type=str,
         required=True,
-        help="Path to caption-based Q/A CSV (e.g. phase5.3_filtered_...qa_pairs...csv)"
+        help="Path to caption-based Q/A CSV (e.g. filtered_caption_qa_pairs.csv)"
     )
     parser.add_argument(
         "--visual-csv",
         type=str,
         required=True,
-        help="Path to visual-grounded Q/A CSV (e.g. phase5.3_filtered_...visual_qa_pairs...csv)"
+        help="Path to visual-grounded Q/A CSV (e.g. filtered_visual_qa_pairs.csv)"
     )
     parser.add_argument(
         "--output-dir",

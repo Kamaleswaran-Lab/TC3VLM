@@ -498,7 +498,7 @@ def save_results(model_name, output_dir, test_samples, references,
 # ============================================================
 def evaluate(args):
     print("=" * 70)
-    print("PHASE 8.1: MODEL EVALUATION (OPTIMIZED)")
+    print("MODEL EVALUATION (OPTIMIZED)")
     print("=" * 70)
     print(f"Test file:     {args.test_file}")
     print(f"Base model:    {args.base_model}")
@@ -595,19 +595,21 @@ def evaluate(args):
         gc.collect()
 
     print("\n" + "=" * 70)
-    print("PHASE 8.1 COMPLETE")
+    print("EVALUATION COMPLETE")
     print("=" * 70)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Phase 8.1: Evaluate fine-tuned models (video loaded once)"
+        description="Evaluate fine-tuned models (video loaded once)"
     )
 
     parser.add_argument("--test-file",    type=str, required=True)
     parser.add_argument("--output-dir",   type=str, required=True,
                         help="Base output dir. Per-model results saved under output_dir/model_name/eval/")
+    parser.add_argument("--video-dir",    type=str, default=DEFAULT_VIDEO_DIR)
     parser.add_argument("--base-model",   type=str, default=BASE_MODEL)
+    parser.add_argument("--cache-dir",    type=str, default=DEFAULT_CACHE_DIR)
 
     # Support multiple models
     parser.add_argument("--model-paths",  type=str, nargs='+', required=True,
@@ -617,18 +619,24 @@ if __name__ == "__main__":
 
     parser.add_argument("--skip-baseline", action="store_true")
     parser.add_argument("--n-samples",    type=int, default=None)
-    parser.add_argument("--batch-size",   type=int, default=BATCH_SIZE)
-    parser.add_argument("--num-workers",  type=int, default=NUM_WORKERS)
-    parser.add_argument("--max-frames",   type=int, default=MAX_FRAMES)
-    parser.add_argument("--target-size",  type=int, default=TARGET_SIZE)
-    parser.add_argument("--max-new-tokens", type=int, default=MAX_NEW_TOKENS)
+    parser.add_argument("--batch-size",   type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--num-workers",  type=int, default=8)
+    parser.add_argument("--max-frames",   type=int, default=DEFAULT_MAX_FRAMES)
+    parser.add_argument("--target-size",  type=int, default=448)
+    parser.add_argument("--max-new-tokens", type=int, default=256)
 
     args = parser.parse_args()
 
+    # Assign globals from args
+    CACHE_DIR      = args.cache_dir
+    VIDEO_DIR      = Path(args.video_dir)
     BATCH_SIZE     = args.batch_size
     NUM_WORKERS    = args.num_workers
     MAX_FRAMES     = args.max_frames
     TARGET_SIZE    = args.target_size
     MAX_NEW_TOKENS = args.max_new_tokens
+
+    # Setup cache
+    setup_cache(CACHE_DIR)
 
     evaluate(args)

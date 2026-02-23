@@ -43,12 +43,17 @@ def setup_cache(cache_dir, torch_cache_dir):
     os.environ['TEMP'] = torch_cache_dir
     os.environ['TMP'] = torch_cache_dir
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
+def cleanup_on_exit():
+    """Cleanup vLLM workers and cache on exit"""
+    import subprocess
+    try:
         subprocess.run(['pkill', '-9', '-f', 'VLLM::Worker'],
                       capture_output=True, check=False)
         
         time.sleep(2)
         
-        if os.path.exists(TORCH_CACHE_DIR):
+        if 'TORCH_CACHE_DIR' in globals() and os.path.exists(TORCH_CACHE_DIR):
             shutil.rmtree(TORCH_CACHE_DIR, ignore_errors=True)
             print(f"Removed cache: {TORCH_CACHE_DIR}")
     except Exception as e:
@@ -554,24 +559,36 @@ def plot_judge_comparison(results_df: pd.DataFrame,
 
 
 # ============================================================
-# MAIN - MODIFIED FOR PHASE 8.1 CSV
+# MAIN - For evaluation CSV format
 # ============================================================
 def main():
     parser = argparse.ArgumentParser(
-        description="Phase 8.3: Enhanced LLM Judge Evaluation for TCCC"
+        description="Enhanced LLM Judge Evaluation for TCCC"
     )
     
     parser.add_argument(
         "--input-csv",
         type=Path,
         required=True,
-        help="Phase 8.1 comparison CSV (e.g., comparison_5qa_combined.csv)"
+        help="Comparison CSV (e.g., comparison_5qa_combined.csv)"
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         required=True,
         help="Output directory for judge results"
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default=DEFAULT_CACHE_DIR,
+        help="HuggingFace cache directory"
+    )
+    parser.add_argument(
+        "--torch-cache-dir",
+        type=str,
+        default=DEFAULT_TORCH_CACHE_DIR,
+        help="Torch cache directory"
     )
     parser.add_argument(
         "--judges",
@@ -584,8 +601,16 @@ def main():
     
     args = parser.parse_args()
     
+    # Assign global cache directories
+    global CACHE_DIR, TORCH_CACHE_DIR
+    CACHE_DIR = args.cache_dir
+    TORCH_CACHE_DIR = args.torch_cache_dir
+    
+    # Setup cache
+    setup_cache(CACHE_DIR, TORCH_CACHE_DIR)
+    
     print("=" * 70)
-    print("PHASE 8.3: ENHANCED LLM JUDGE EVALUATION")
+    print("ENHANCED LLM JUDGE EVALUATION")
     print("=" * 70)
     print(f"Input CSV: {args.input_csv}")
     print(f"Output: {args.output_dir}")
@@ -680,7 +705,7 @@ def main():
         )
     
     print("\n" + "=" * 70)
-    print("PHASE 8.3 COMPLETE")
+    print("LLM JUDGE COMPLETE")
     print("=" * 70)
     print(f"\nAll outputs saved to: {args.output_dir}")
     print("\nGenerated files:")

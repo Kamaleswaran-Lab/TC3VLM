@@ -63,10 +63,10 @@ logger = logging.getLogger(__name__)
 # CONFIG
 # ============================================================
 MODEL_NAME = "Qwen/Qwen3-VL-8B-Instruct"
-BASE_OUTPUT_DIR = Path("/work/jkim1/TCCC/models")
+BASE_OUTPUT_DIR = Path("./models")
 
 # Frame cache directory
-FRAME_CACHE_DIR = Path("/work/jkim1/TCCC/frame_cache")
+FRAME_CACHE_DIR = Path("./cache/frames")
 
 # Training parameters
 NUM_EPOCHS = 3
@@ -180,7 +180,7 @@ def extract_frames_opencv(video_path: str, start_time: float, end_time: float,
 
 def extract_frames(video_path: str, start_time: float, end_time: float,
                    max_frames: int, target_size: int) -> Optional[List[np.ndarray]]:
-    """PyAV 우선, 실패 시 OpenCV fallback"""
+    """Try PyAV first, fallback to OpenCV on failure"""
     frames = extract_frames_pyav(video_path, start_time, end_time, max_frames, target_size)
     if frames is None:
         frames = extract_frames_opencv(video_path, start_time, end_time, max_frames, target_size)
@@ -192,7 +192,7 @@ def extract_frames(video_path: str, start_time: float, end_time: float,
 # ============================================================
 def get_cache_key(video_path: str, start_time: float, end_time: float,
                   max_frames: int, target_size: int) -> str:
-    """샘플별 고유 캐시 키 생성"""
+    """Generate unique cache key per sample"""
     key_str = f"{video_path}_{start_time:.3f}_{end_time:.3f}_{max_frames}_{target_size}"
     return hashlib.md5(key_str.encode()).hexdigest()
 
@@ -259,7 +259,7 @@ def precache_frames(samples, max_frames, target_size, local_rank=0, num_workers=
 
 
 def load_cached_frames(cache_key: str) -> Optional[List[np.ndarray]]:
-    """캐시에서 프레임 로드"""
+    """Load frames from cache"""
     cache_path = get_cache_path(cache_key)
     if not cache_path.exists():
         return None
@@ -500,7 +500,7 @@ def setup_model_and_processor(base_model: str):
 # LOAD SAMPLES (for pre-cache)
 # ============================================================
 def load_all_samples(jsonl_path: str) -> List[Dict]:
-    """JSONL에서 video/start_time/end_time만 추출"""
+    """Extract only video/start_time/end_time from JSONL"""
     samples = []
     with open(jsonl_path, 'r') as f:
         for line in f:
@@ -526,7 +526,7 @@ def finetune(train_data_path, val_data_path, output_dir, training_mode,
 
     if local_rank == 0:
         print("=" * 70)
-        print("PHASE 7: FINE-TUNING WITH LORA (Optimized)")
+        print("FINE-TUNING WITH LORA (Optimized)")
         print("=" * 70)
         print(f"\nTraining data:  {train_data_path}")
         print(f"Validation data:{val_data_path}")
@@ -651,7 +651,7 @@ def finetune(train_data_path, val_data_path, output_dir, training_mode,
         processor.save_pretrained(str(final_output_dir))
 
         print("\n" + "=" * 70)
-        print("PHASE 7 COMPLETE")
+        print("FINE-TUNING COMPLETE")
         print("=" * 70)
         print(f"Model saved: {final_output_dir}")
         print(f"  Training mode:     {training_mode}")
@@ -665,14 +665,16 @@ def finetune(train_data_path, val_data_path, output_dir, training_mode,
 # ARGPARSE
 # ============================================================
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Phase 7: Fine-tune Qwen2-VL with LoRA (Optimized)")
+    parser = argparse.ArgumentParser(description="Fine-tune Qwen3-VL with LoRA (Optimized)")
 
     parser.add_argument("--train-data", type=str, required=True)
     parser.add_argument("--val-data", type=str, required=True)
     parser.add_argument("--output-dir", type=str, required=True)
     parser.add_argument("--training-mode", type=str, default="combined",
                         choices=["caption", "visual", "combined"])
-    parser.add_argument("--base-model", type=str, default=MODEL_NAME)
+    parser.add_argument("--base-model", type=str, default=DEFAULT_MODEL_NAME)
+    parser.add_argument("--cache-dir", type=str, default=DEFAULT_CACHE_DIR)
+    parser.add_argument("--video-dir", type=str, default=DEFAULT_VIDEO_DIR)
     parser.add_argument("--resume-from-checkpoint", type=str, default=None)
 
     # Training hyperparameters
@@ -688,7 +690,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-frames", type=int, default=MAX_FRAMES)
     parser.add_argument("--target-size", type=int, default=TARGET_SIZE)
     parser.add_argument("--max-seq-length", type=int, default=MAX_SEQ_LENGTH)
-    parser.add_argument("--frame-cache-dir", type=str, default=str(FRAME_CACHE_DIR))
+    parser.add_argument("--frame-cache-dir", type=str, default=DEFAULT_FRAME_CACHE_DIR)
 
     # LoRA parameters
     parser.add_argument("--lora-r", type=int, default=LORA_R)
@@ -697,8 +699,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Update globals
+    # Assign globals from args
+    MODEL_NAME = args.base_model
+    CACHE_DIR = args.cache_dir
     FRAME_CACHE_DIR = Path(args.frame_cache_dir)
+    VIDEO_DIR = Path(args.video_dir)
     NUM_EPOCHS = args.num_epochs
     BATCH_SIZE = args.batch_size
     GRADIENT_ACCUMULATION_STEPS = args.gradient_accumulation_steps
@@ -712,6 +717,9 @@ if __name__ == "__main__":
     LORA_R = args.lora_r
     LORA_ALPHA = args.lora_alpha
     LORA_DROPOUT = args.lora_dropout
+
+    # Setup cache
+    setup_cache(CACHE_DIR)
 
     finetune(
         train_data_path=args.train_data,

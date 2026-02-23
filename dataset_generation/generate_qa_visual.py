@@ -285,14 +285,14 @@ def generate_qa(frames, model, processor):
 # ============================================================
 # MAIN
 # ============================================================
-def main(limit):
+def main(input_csv, output_csv_path, video_dir, limit=None):
 
     print("=" * 70)
-    print("PHASE 5.2: VISUAL QA - OPTIMIZED (num_qa=5 fixed)")
+    print("VISUAL QA GENERATION (OPTIMIZED)")
     print(f"num_qa: {NUM_QA} | max_new_tokens: {MAX_NEW_TOKENS}")
     print("=" * 70)
 
-    df = pd.read_csv(INPUT_CSV)
+    df = pd.read_csv(input_csv)
     df_with_video = df[df['video_file'].notna()].copy()
 
     if limit:
@@ -306,7 +306,7 @@ def main(limit):
     # Prepare tasks
     tasks = []
     for idx, row in df_with_video.iterrows():
-        video_path = VIDEO_DIR / row['video_file']
+        video_path = Path(video_dir) / row['video_file']
         if not video_path.exists():
             continue
         tasks.append({
@@ -320,7 +320,7 @@ def main(limit):
 
     all_results = []
     stats = {'processed': 0, 'failed': 0, 'total': len(tasks)}
-    base_dir = Path("/hpc/home/jkim1/workspace/TCCC/data")
+    output_dir = Path(output_csv_path).parent
 
     # Threading prefetch (increased queue size)
     queue = Queue(maxsize=8)  # 3 -> 8
@@ -378,12 +378,12 @@ def main(limit):
         # empty_cache + checkpoint: every 50 samples
         if stats['processed'] % 50 == 0:
             torch.cuda.empty_cache()
-            ckpt_path = base_dir / f"phase5.2_visual_qa_{NUM_QA}_72B_checkpoint.csv"
+            ckpt_path = output_dir / f"visual_qa_{NUM_QA}_checkpoint.csv"
             pd.DataFrame(all_results).to_csv(ckpt_path, index=False)
             logger.info(f"Checkpoint saved: {stats['processed']} processed")
 
     # Final save
-    output_path = base_dir / f"phase5.2_visual_qa_{NUM_QA}_72B.csv"
+    output_path = Path(output_csv_path)
     df_out = pd.DataFrame(all_results)
     df_out.to_csv(output_path, index=False)
 
@@ -398,10 +398,82 @@ def main(limit):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Phase 5.2: Visual QA Generation (num_qa=5 fixed)"
+        description=\"Visual QA Generation\"
     )
-    parser.add_argument("--limit", type=int, default=None,
-                        help="Limit number of chunks to process (for testing)")
+    parser.add_argument(
+        \"--input\",
+        type=str,
+        default=DEFAULT_INPUT_CSV,
+        help=\"Input CSV with video metadata\"
+    )
+    parser.add_argument(
+        \"--output\",
+        type=str,
+        default=DEFAULT_OUTPUT_CSV,
+        help=\"Output CSV path\"
+    )
+    parser.add_argument(
+        \"--video-dir\",
+        type=str,
+        default=DEFAULT_VIDEO_DIR,
+        help=\"Directory containing video files\"
+    )
+    parser.add_argument(
+        \"--model\",
+        type=str,
+        default=DEFAULT_MODEL_NAME,
+        help=\"Hugging Face model name\"
+    )
+    parser.add_argument(
+        \"--cache-dir\",
+        type=str,
+        default=DEFAULT_CACHE_DIR,
+        help=\"Hugging Face cache directory\"
+    )
+    parser.add_argument(
+        \"--max-frames\",
+        type=int,
+        default=DEFAULT_MAX_FRAMES,
+        help=\"Maximum number of frames to extract\"
+    )
+    parser.add_argument(
+        \"--target-size\",
+        type=int,
+        default=DEFAULT_TARGET_SIZE,
+        help=\"Target frame size\"
+    )
+    parser.add_argument(
+        \"--max-tokens\",
+        type=int,
+        default=DEFAULT_MAX_NEW_TOKENS,
+        help=\"Maximum tokens for generation\"
+    )
+    parser.add_argument(
+        \"--num-qa\",
+        type=int,
+        default=DEFAULT_NUM_QA,
+        help=\"Number of Q/A pairs to generate per video\"
+    )
+    parser.add_argument(
+        \"--limit\",
+        type=int,
+        default=None,
+        help=\"Limit number of chunks to process (for testing)\"
+    )
+    
     args = parser.parse_args()
-
-    main(args.limit)
+    
+    # Assign globals from args
+    INPUT_CSV = args.input
+    VIDEO_DIR = args.video_dir
+    MODEL_NAME = args.model
+    CACHE_DIR = args.cache_dir
+    MAX_FRAMES = args.max_frames
+    TARGET_SIZE = args.target_size
+    MAX_NEW_TOKENS = args.max_tokens
+    NUM_QA = args.num_qa
+    
+    # Setup cache
+    setup_cache(CACHE_DIR)
+    
+    main(args.input, args.output, args.video_dir, args.limit)
