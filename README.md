@@ -137,11 +137,10 @@ Videos exceeding 8 minutes are split into 6-minute segments with 2-minute overla
 
 ```bash
 python preprocessing/segment_videos.py \
-    --video-csv /data/videos.csv \
-    --video-dir /data/videos \
+    --input /data/downloaded_videos.csv \
     --output /data/chunks.csv \
-    --chunk-duration 6 \
-    --overlap-duration 2
+    --chunk-duration 360 \
+    --overlap-duration 120
 ```
 
 **Output**: CSV with chunk info `[video_file, start_time, end_time, duration]`
@@ -152,7 +151,8 @@ Extract captions using platform-provided subtitles when available; otherwise tra
 
 ```bash
 python caption/extract_captions.py \
-    --video-dir /data/videos \
+    --input /data/chunks.csv \
+    --video-dir /data/videos/raw \
     --output /data/raw_captions.csv \
     --whisper-model large-v3
 ```
@@ -202,11 +202,15 @@ python dataset_generation/generate_qa_visual.py \
 Filter low-quality Q/A pairs using LLM-as-judge. Each pair is scored 1–5 on five criteria: **Factual Correctness**, **Completeness**, **Clinical Relevance**, **Specificity**, and **Safety**. Pairs with an average score below 3 are discarded.
 
 ```bash
+# Filter caption-based Q/A
 python dataset_generation/filter_qa_llm.py \
-    --caption-qa /data/qa_caption.csv \
-    --visual-qa /data/qa_visual.csv \
-    --output /data/qa_filtered.csv \
-    --judge-model meta-llama/Meta-Llama-3.1-405B-Instruct
+    --input-file /data/qa_caption.csv \
+    --output-file /data/qa_caption_filtered.csv
+
+# Filter visual Q/A
+python dataset_generation/filter_qa_llm.py \
+    --input-file /data/qa_visual.csv \
+    --output-file /data/qa_visual_filtered.csv
 ```
 
 **Output**: 7,585 high-quality Q/A pairs (3,543 caption-based + 4,042 visual-grounded)
@@ -219,21 +223,19 @@ Split at **video level** to prevent data leakage.
 
 ```bash
 python dataset_preparation/split_dataset.py \
-    --input /data/qa_filtered.csv \
+    --caption-csv /data/qa_caption_filtered.csv \
+    --visual-csv /data/qa_visual_filtered.csv \
     --output-dir /data/splits \
     --train-ratio 0.70 \
     --val-ratio 0.15 \
-    --test-ratio 0.15 \
-    --seed 42
+    --test-ratio 0.15
 ```
 
 #### 6.2: Convert to Fine-tuning Format
 
 ```bash
 python dataset_preparation/convert_to_finetune_format.py \
-    --input /data/splits \
-    --video-dir /data/videos \
-    --chunks-csv /data/chunks.csv \
+    --input-dir /data/splits \
     --output-dir /data/finetune
 ```
 
@@ -294,10 +296,9 @@ Two independent judges (Llama-3.1-405B and Qwen2.5-72B) evaluate each response. 
 
 ```bash
 python evaluation/llm_judge.py \
-    --comparison-csvs ./results/comparison_tc3vlm_7b.csv \
+    --input-csv ./results/comparison_tc3vlm_7b.csv \
     --output-dir ./results/judge \
-    --judge-model-1 meta-llama/Meta-Llama-3.1-405B-Instruct \
-    --judge-model-2 Qwen/Qwen2.5-72B-Instruct
+    --judges llama405b qwen72b
 ```
 
 Evaluation criteria (adapted from Med-PaLM 2, TC3-specific): Medical Accuracy, Protocol Adherence, Completeness, Actionability, Safety.
