@@ -388,14 +388,7 @@ video_001.mp4,240.0,600.0,360.0,ABC123
 
 ## Citation
 
-```bibtex
-@inproceedings{tc3vlm2026,
-  title={{TC3-VLM}: Vision-Language Model for Tactical Combat Casualty Care},
-  author={Anonymized Authors},
-  booktitle={Medical Image Computing and Computer Assisted Intervention (MICCAI)},
-  year={2026}
-}
-```
+To be announced after publication.
 
 ## Acknowledgments
 
