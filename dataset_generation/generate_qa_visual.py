@@ -208,7 +208,7 @@ def setup_model():
     )
 
     print("Model loaded\n")
-    return model, processor model, processor
+    return model, processor
 
 
 # ============================================================
