@@ -25,6 +25,14 @@ DEFAULT_TARGET_SIZE = 448
 DEFAULT_MAX_NEW_TOKENS = 800
 DEFAULT_NUM_QA = 5
 
+# Global variables (will be set from argparse)
+MODEL_NAME = None
+CACHE_DIR = None
+MAX_FRAMES = None
+TARGET_SIZE = None
+MAX_NEW_TOKENS = None
+NUM_QA = None
+
 # Cache setup
 def setup_cache(cache_dir):
     os.makedirs(cache_dir, exist_ok=True)
@@ -38,7 +46,8 @@ def setup_cache(cache_dir):
 # ============================================================
 def create_visual_qa_prompt():
     """Create prompt for visual Q/A generation (num_qa fixed to NUM_QA)"""
-
+    global NUM_QA
+    
     return f"""You are a TCCC expert instructor analyzing this training video.
 
 TCCC (Tactical Combat Casualty Care) follows the MARCH protocol:
@@ -179,6 +188,8 @@ def video_loader_thread(tasks, queue, max_frames, target_size):
 # MODEL
 # ============================================================
 def setup_model():
+    global MODEL_NAME, CACHE_DIR
+    
     print("Loading model...")
 
     model = AutoModelForVision2Seq.from_pretrained(
@@ -197,7 +208,7 @@ def setup_model():
     )
 
     print("Model loaded\n")
-    return model, processor
+    return model, processor model, processor
 
 
 # ============================================================
@@ -205,6 +216,8 @@ def setup_model():
 # ============================================================
 def generate_qa(frames, model, processor):
     """Generate NUM_QA Q/A pairs in a single forward pass"""
+    global MAX_NEW_TOKENS
+    
     try:
         prompt = create_visual_qa_prompt()
 
@@ -286,7 +299,8 @@ def generate_qa(frames, model, processor):
 # MAIN
 # ============================================================
 def main(input_csv, output_csv_path, video_dir, limit=None):
-
+    global NUM_QA, MAX_NEW_TOKENS, MAX_FRAMES, TARGET_SIZE
+    
     print("=" * 70)
     print("VISUAL QA GENERATION (OPTIMIZED)")
     print(f"num_qa: {NUM_QA} | max_new_tokens: {MAX_NEW_TOKENS}")
@@ -398,74 +412,72 @@ def main(input_csv, output_csv_path, video_dir, limit=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=\"Visual QA Generation\"
+        description="Visual QA Generation"
     )
     parser.add_argument(
-        \"--input\",
+        "--input",
         type=str,
         default=DEFAULT_INPUT_CSV,
-        help=\"Input CSV with video metadata\"
+        help="Input CSV with video metadata"
     )
     parser.add_argument(
-        \"--output\",
+        "--output",
         type=str,
         default=DEFAULT_OUTPUT_CSV,
-        help=\"Output CSV path\"
+        help="Output CSV path"
     )
     parser.add_argument(
-        \"--video-dir\",
+        "--video-dir",
         type=str,
         default=DEFAULT_VIDEO_DIR,
-        help=\"Directory containing video files\"
+        help="Directory containing video files"
     )
     parser.add_argument(
-        \"--model\",
+        "--model",
         type=str,
         default=DEFAULT_MODEL_NAME,
-        help=\"Hugging Face model name\"
+        help="Hugging Face model name"
     )
     parser.add_argument(
-        \"--cache-dir\",
+        "--cache-dir",
         type=str,
         default=DEFAULT_CACHE_DIR,
-        help=\"Hugging Face cache directory\"
+        help="Hugging Face cache directory"
     )
     parser.add_argument(
-        \"--max-frames\",
+        "--max-frames",
         type=int,
         default=DEFAULT_MAX_FRAMES,
-        help=\"Maximum number of frames to extract\"
+        help="Maximum number of frames to extract"
     )
     parser.add_argument(
-        \"--target-size\",
+        "--target-size",
         type=int,
         default=DEFAULT_TARGET_SIZE,
-        help=\"Target frame size\"
+        help="Target frame size"
     )
     parser.add_argument(
-        \"--max-tokens\",
+        "--max-tokens",
         type=int,
         default=DEFAULT_MAX_NEW_TOKENS,
-        help=\"Maximum tokens for generation\"
+        help="Maximum tokens for generation"
     )
     parser.add_argument(
-        \"--num-qa\",
+        "--num-qa",
         type=int,
         default=DEFAULT_NUM_QA,
-        help=\"Number of Q/A pairs to generate per video\"
+        help="Number of Q/A pairs to generate per video"
     )
     parser.add_argument(
-        \"--limit\",
+        "--limit",
         type=int,
         default=None,
-        help=\"Limit number of chunks to process (for testing)\"
+        help="Limit number of chunks to process (for testing)"
     )
     
     args = parser.parse_args()
     
     # Assign globals from args
-    INPUT_CSV = args.input
-    VIDEO_DIR = args.video_dir
     MODEL_NAME = args.model
     CACHE_DIR = args.cache_dir
     MAX_FRAMES = args.max_frames

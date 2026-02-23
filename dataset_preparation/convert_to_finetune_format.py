@@ -28,8 +28,8 @@ DEFAULT_CHUNKS_CSV = "./data/segmented_videos.csv"
 # ============================================================
 def load_chunk_metadata(chunks_csv):
     """Load chunk metadata for video timing information"""
-
-    print("Loading chunk metadata...")
+    
+    print(f"Loading chunk metadata from: {chunks_csv}")
     chunks_df = pd.read_csv(chunks_csv)
     print(f"Loaded {len(chunks_df)} chunks")
 
@@ -47,7 +47,7 @@ def load_chunk_metadata(chunks_csv):
 # ============================================================
 # CONVERSION
 # ============================================================
-def create_training_sample(row, chunk_dict):
+def create_training_sample(row, chunk_dict, video_dir):
     """Convert a Q/A pair to Qwen2-VL training format"""
 
     chunk_id = row['chunk_id']
@@ -56,7 +56,7 @@ def create_training_sample(row, chunk_dict):
         return None
 
     chunk_info = chunk_dict[chunk_id]
-    video_path = VIDEO_DIR / chunk_info['video_file']
+    video_path = Path(video_dir) / chunk_info['video_file']
 
     if not video_path.exists():
         return None
@@ -90,7 +90,7 @@ def create_training_sample(row, chunk_dict):
     return sample
 
 
-def process_split(split_name, input_csv, chunk_dict, output_dir):
+def process_split(split_name, input_csv, chunk_dict, video_dir, output_dir):
     """Process train/val/test split"""
 
     print(f"\n{'='*70}")
@@ -113,7 +113,7 @@ def process_split(split_name, input_csv, chunk_dict, output_dir):
     skipped = 0
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Converting {split_name}"):
-        sample = create_training_sample(row, chunk_dict)
+        sample = create_training_sample(row, chunk_dict, video_dir)
         if sample is not None:
             samples.append(sample)
         else:
@@ -134,7 +134,7 @@ def process_split(split_name, input_csv, chunk_dict, output_dir):
 # ============================================================
 # MAIN
 # ============================================================
-def convert_to_finetune_format(input_dir, output_dir):
+def convert_to_finetune_format(input_dir, output_dir, video_dir, chunks_csv):
     print("=" * 70)
     print("CONVERT TO FINE-TUNING FORMAT")
     print("Converts Q/A pairs to Qwen2-VL JSONL format")
@@ -146,6 +146,8 @@ def convert_to_finetune_format(input_dir, output_dir):
 
     print(f"\nInput directory:  {input_dir}")
     print(f"Output directory: {output_dir}")
+    print(f"Video directory:  {video_dir}")
+    print(f"Chunks CSV:       {chunks_csv}")
 
     # Validate input files
     splits = [
@@ -160,11 +162,11 @@ def convert_to_finetune_format(input_dir, output_dir):
                 f"Please run Phase 6.1 first to generate the split CSVs."
             )
 
-    chunk_dict = load_chunk_metadata()
+    chunk_dict = load_chunk_metadata(chunks_csv)
 
     stats = {}
     for split_name, input_csv in splits:
-        stats[split_name] = process_split(split_name, input_csv, chunk_dict, output_dir)
+        stats[split_name] = process_split(split_name, input_csv, chunk_dict, video_dir, output_dir)
 
     print("\n" + "=" * 70)
     print("CONVERSION COMPLETE")
@@ -207,6 +209,18 @@ if __name__ == "__main__":
         help="Output directory for train.jsonl / val.jsonl / test.jsonl"
     )
     parser.add_argument(
+        "--video-dir",
+        type=str,
+        default=DEFAULT_VIDEO_DIR,
+        help="Directory containing video files"
+    )
+    parser.add_argument(
+        "--chunks-csv",
+        type=str,
+        default=DEFAULT_CHUNKS_CSV,
+        help="CSV file with chunk metadata (video timing information)"
+    )
+    parser.add_argument(
         "--show-sample",
         action="store_true",
         help="Print the first entry of train.jsonl after conversion"
@@ -214,7 +228,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    convert_to_finetune_format(args.input_dir, args.output_dir)
+    convert_to_finetune_format(args.input_dir, args.output_dir, args.video_dir, args.chunks_csv)
 
     if args.show_sample:
         train_jsonl = Path(args.output_dir) / "train.jsonl"

@@ -620,7 +620,7 @@ def main():
     # Create output directory
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Load Phase 8.1 comparison CSV
+    # Load comparison CSV
     if not args.input_csv.exists():
         print(f"ERROR: Input CSV not found: {args.input_csv}")
         return

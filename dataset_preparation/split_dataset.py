@@ -95,7 +95,7 @@ def analyze_video_distribution(df):
 # ============================================================
 # RANDOM VIDEO SPLIT
 # ============================================================
-def split_videos(video_stats, train_ratio, val_ratio, test_ratio):
+def split_videos(video_stats, train_ratio, val_ratio, test_ratio, random_seed):
     print("\n" + "=" * 70)
     print("Video-Level Split (Random)")
     print("=" * 70)
@@ -107,12 +107,12 @@ def split_videos(video_stats, train_ratio, val_ratio, test_ratio):
     train_videos, temp_videos = train_test_split(
         video_ids,
         test_size=(val_ratio + test_ratio),
-        random_state=RANDOM_SEED,
+        random_state=random_seed,
     )
     val_videos, test_videos = train_test_split(
         temp_videos,
         test_size=test_ratio / (val_ratio + test_ratio),
-        random_state=RANDOM_SEED,
+        random_state=random_seed,
     )
 
     total = len(video_ids)
@@ -271,7 +271,7 @@ def save_statistics(df, train_df, val_df, test_df,
 # ============================================================
 # MAIN
 # ============================================================
-def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, test_ratio):
+def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, test_ratio, random_seed):
     print("=" * 70)
     print("TRAIN/VAL/TEST SPLIT")
     print("Video-level split for ablation study")
@@ -280,7 +280,7 @@ def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, t
     print(f"Visual CSV:  {visual_csv}")
     print(f"Output dir:  {output_dir}")
     print(f"Split ratios: Train={train_ratio}, Val={val_ratio}, Test={test_ratio}")
-    print(f"Random seed: {RANDOM_SEED}")
+    print(f"Random seed: {random_seed}")
     print("\n  Ablation Study Design:")
     print("  - All splits contain caption + visual Q/A")
     print("  - Filter by 'source' column during training:")
@@ -295,7 +295,7 @@ def split_dataset(caption_csv, visual_csv, output_dir, train_ratio, val_ratio, t
         raise ValueError("'video_id' column not found in combined dataframe!")
 
     video_stats = analyze_video_distribution(df)
-    train_videos, val_videos, test_videos = split_videos(video_stats, train_ratio, val_ratio, test_ratio)
+    train_videos, val_videos, test_videos = split_videos(video_stats, train_ratio, val_ratio, test_ratio, random_seed)
     train_df, val_df, test_df = create_splits(df, train_videos, val_videos, test_videos)
     analyze_splits(train_df, val_df, test_df)
     save_splits(train_df, val_df, test_df, output_dir)
@@ -335,9 +335,11 @@ if __name__ == "__main__":
         required=True,
         help="Output directory for train/val/test CSVs and stats"
     )
-    parser.add_argument("--train-ratio", type=float, default=TRAIN_RATIO)
-    parser.add_argument("--val-ratio",   type=float, default=VAL_RATIO)
-    parser.add_argument("--test-ratio",  type=float, default=TEST_RATIO)
+    parser.add_argument("--train-ratio", type=float, default=DEFAULT_TRAIN_RATIO)
+    parser.add_argument("--val-ratio",   type=float, default=DEFAULT_VAL_RATIO)
+    parser.add_argument("--test-ratio",  type=float, default=DEFAULT_TEST_RATIO)
+    parser.add_argument("--seed",        type=int,   default=DEFAULT_RANDOM_SEED,
+                        help="Random seed for reproducibility")
 
     args = parser.parse_args()
 
@@ -351,4 +353,5 @@ if __name__ == "__main__":
         train_ratio=args.train_ratio,
         val_ratio=args.val_ratio,
         test_ratio=args.test_ratio,
+        random_seed=args.seed,
     )
